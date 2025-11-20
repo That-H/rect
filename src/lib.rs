@@ -198,7 +198,7 @@ impl Rect {
 
     /// Return all positions contained within the rect, excluding the edges.
     pub fn inner_cells(&self) -> InteriorIter {
-        InteriorIter::from(Rect::new(self.left + 1, self.top - 1, self.wid - 1, self.hgt - 1))
+        InteriorIter::from(Rect::new(self.left + 1, self.top - 1, self.wid - 2, self.hgt - 2))
     }
 
     /// Returns the area of the rectangle.
