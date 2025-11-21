@@ -66,21 +66,38 @@ impl Rect {
         Point::new(self.left, self.top)
     }
 
-    /// Returns each point on the edge of the rectangle.
-    pub fn edges(&self) -> Vec<Point> {
-        let mut points = Vec::new();
-
-        for x in self.left..=self.right() {
-            points.push(Point::new(x, self.top));
-            points.push(Point::new(x, self.bottom()));
-        }
-
-        for y in self.bottom() + 1..=self.top - 1 {
-            points.push(Point::new(self.left, y));
-            points.push(Point::new(self.right(), y));
-        }
-
-        points
+    /// Returns an iterator over each point on the edge of the rectangle.
+	/// Iterates in a clockwise direction.
+	///
+	/// # Examples
+    ///
+    /// ```
+    /// use point::Point;
+    /// use rect::Rect;
+    ///
+    /// let mut rect = Rect::new(1, 1, 3, 3);
+    ///
+    /// // The above rectangle, below:
+    /// //
+    /// //  +-+
+    /// //  | |
+    /// //  +-+
+    ///
+    /// let expected = vec![
+	///	    Point::new(1, 1),
+	///	    Point::new(2, 1),
+	///     Point::new(3, 1),
+	///     Point::new(3, 0),
+	///     Point::new(3, -1),
+	///     Point::new(2, -1),
+	///     Point::new(1, -1),
+	///     Point::new(1, 0)
+	/// ];  
+    ///
+    /// assert_eq!(rect.edges().collect::<Vec<_>>(), expected);
+    /// ```
+    pub fn edges(&self) -> EdgeIter {
+        EdgeIter::from(self)
     }
 
     /// Returns each corner of the rect.
@@ -101,17 +118,17 @@ impl Rect {
     /// //  | |
     /// //  +-+
     ///
-    /// let expected = vec![Point::new(1, 1), Point::new(3, 1), Point::new(1, -3), Point::new(3, -3)];  
+    /// let expected = [Point::new(1, 1), Point::new(3, 1), Point::new(1, -3), Point::new(3, -3)];  
     ///
     /// assert_eq!(rect.corners(), expected);
     /// ```
-    pub fn corners(&self) -> Vec<Point> {
+    pub fn corners(&self) -> [Point; 4] {
         let left = self.left;
         let right = self.right();
         let top = self.top;
         let bottom = self.bottom();
 
-        vec![
+        [
             Point::new(left, top),
             Point::new(right, top),
             Point::new(left, bottom),
@@ -148,7 +165,7 @@ impl Rect {
     /// //  |  |
     /// //  |  |
     /// //  |  |
-    /// //  +--+	
+    /// //  +--+
     /// ```
     pub fn expand(&mut self, dir: Point) {
         self.wid += dir.x.abs();
@@ -232,7 +249,7 @@ impl Rect {
 
     /// Centres the rect on the given position.
     pub fn centre_on(&mut self, pos: Point) {
-        self.move_to(pos - Point::new(self.wid as i32 / 2, -(self.hgt as i32) / 2));
+        self.move_to(pos - Point::new(self.wid / 2, -self.hgt / 2));
     }
 }
 
@@ -286,6 +303,54 @@ impl From<Rect> for InteriorIter {
     }
 }
 
+/// An iterator over the cells along the edges of a rect clockwise, starting from the top left.
+/// Terminates once it reaches the top left corner for the second time.
+#[derive(Clone, Debug)]
+pub struct EdgeIter {
+    cur_pos: Point,
+	dir: Point,
+	corners: [Point; 4],
+	// Number of corners reached.
+	count: u8,
+	end: bool,
+}
+
+impl Iterator for EdgeIter {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+		if self.end {
+			return None;
+		}
+		
+        let ret = self.cur_pos;
+		
+		self.cur_pos = self.cur_pos + self.dir;
+		
+		if self.corners.contains(&self.cur_pos) {
+			if self.count == 3 {
+				self.end = true;
+			}
+			self.dir.rotate_90_cw_ip();
+			self.count += 1;
+		}
+
+        Some(ret)
+    }
+}
+
+impl From<&Rect> for EdgeIter {
+    fn from(val: &Rect) -> Self {
+        Self {
+            cur_pos: val.top_left(),
+			dir: Point::new(1, 0),
+			corners: val.corners(),
+			count: 0,
+			end: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod unittests {
     use super::*;
@@ -302,5 +367,23 @@ mod unittests {
         }
 
         assert_eq!(expected, test_rect.cells().collect::<Vec<Point>>());
+    }
+	
+	#[test]
+    fn inner_cells_test1() {
+        let test_rect = Rect::new(1, 3, 3, 3);
+        let expected = vec![Point::new(2, 2)];
+
+        assert_eq!(expected, test_rect.inner_cells().collect::<Vec<Point>>());
+    }
+	
+	#[test]
+    fn inner_cells_test2() {
+        let test_rect = Rect::new(1, 3, 4, 4);
+        let expected = vec![Point::new(2, 2), Point::new(3, 2), Point::new(2, 1), Point::new(3, 1)];
+		
+		for cl in test_rect.inner_cells() {
+			assert!(expected.contains(&cl), "{cl} not expected");
+		}
     }
 }
