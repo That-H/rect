@@ -27,6 +27,25 @@ impl Rect {
     }
 
     /// Rightmost x co-ord of the rect.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use point::Point;
+    /// use rect::Rect;
+    ///
+    /// let rect = Rect::new(1, 1, 4, 3);
+    ///
+    /// // The above rectangle, below:
+	/// // 'O' is the origin.
+    /// //
+    /// //  +--+
+    /// // O|  |
+    /// //  +--+
+    /// // 
+	///
+    /// assert_eq!(rect.right(), 4);
+    /// ```
     pub fn right(&self) -> i32 {
         self.left + self.wid - 1
     }
@@ -39,13 +58,15 @@ impl Rect {
     /// use point::Point;
     /// use rect::Rect;
     ///
-    /// let rect = Rect::new(0, 1, 4, 3);
+    /// let rect = Rect::new(1, 1, 4, 3);
     ///
     /// // The above rectangle, below:
+	/// // 'O' is the origin.
     /// //
-    /// // +--+
-    /// // |  |
-    /// // +--+
+    /// //  +--+
+    /// // O|  |
+    /// //  +--+
+	/// // 
     ///
     /// assert_eq!(rect.bottom(), -1);
     /// ```
@@ -54,6 +75,35 @@ impl Rect {
     }
 
     /// Returns true if the rect overlaps other.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use point::Point;
+    /// use rect::Rect;
+    ///
+    /// let rect1 = Rect::new(0, 7, 4, 3);
+    /// let rect2 = Rect::new(3, 6, 5, 5);
+    /// let rect3 = Rect::new(10, 2, 3, 3);
+    ///
+    /// // The above rectangles, below:
+	/// // '!' represents where an overlap occurs is.
+	/// // 'O' is the origin.
+    /// //
+    /// // +--+
+    /// // |1 !---+
+    /// // +--!   |
+	/// //    | 2 |
+	/// //    |   |
+    /// //    +---+  +-+
+	/// //           |3|
+	/// // O         +-+
+	///
+    /// assert!(rect1.overlaps(&rect2));
+	/// assert!(rect2.overlaps(&rect1));
+	/// assert!(!rect3.overlaps(&rect1));
+	/// assert!(!rect3.overlaps(&rect2));
+    /// ```
     pub fn overlaps(&self, other: &Self) -> bool {
         self.left <= other.right()
             && self.right() >= other.left
@@ -62,6 +112,28 @@ impl Rect {
     }
 
     /// Returns the top left corner as a point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use point::Point;
+    /// use rect::Rect;
+    ///
+    /// let rect = Rect::new(2, 1, 4, 3);
+    ///
+    /// // The above rectangle, below:
+	/// // 'O' is the origin.
+    /// //
+    /// // Corner in question
+	/// //   |
+	/// //   v
+    /// //   +--+
+    /// //   |  |
+    /// //   +--+
+	/// // O 
+    ///
+    /// assert_eq!(rect.top_left(), Point::new(2, 1));
+    /// ```
     pub fn top_left(&self) -> Point {
         Point::new(self.left, self.top)
     }
@@ -111,12 +183,14 @@ impl Rect {
     /// let mut rect = Rect::new(1, 1, 3, 5);
     ///
     /// // The above rectangle, below:
+	/// // 'O' is the origin.
     /// //
     /// //  +-+
-    /// //  | |
+    /// // O| |
     /// //  | |
     /// //  | |
     /// //  +-+
+	/// // 
     ///
     /// let expected = [Point::new(1, 1), Point::new(3, 1), Point::new(1, -3), Point::new(3, -3)];  
     ///
@@ -147,13 +221,15 @@ impl Rect {
     /// let mut rect = Rect::new(1, 1, 3, 5);
     ///
     /// // The above rectangle, below:
+	/// // 'O' is the origin.
     /// //
     /// //  +-+
-    /// //  | |
+    /// // O| |
     /// //  | |
     /// //  | |
     /// //  +-+
-    ///
+    /// // 
+	///
     /// let transformed = Rect::new(1, 1, 4, 5);
 	/// rect.expand(Point::new(1, 0));
     ///
@@ -192,7 +268,9 @@ impl Rect {
     /// let rect = Rect::new(0, 0, 3, 5);
     ///
     /// // The above rectangle, below:
-    /// // +-+
+	/// // 'O' is the origin.
+	/// //
+    /// // O-+
     /// // | |
     /// // | |
     /// // | |
@@ -226,14 +304,16 @@ impl Rect {
     /// use point::Point;
     /// use rect::Rect;
     ///
-    /// let rect = Rect::new(0, 0, 3, 5);
+    /// let rect = Rect::new(0, 5, 3, 5);
     ///
     /// // The above rectangle, below:
+	/// // 'O' is the origin.
+	/// //
     /// // +-+
     /// // | |
     /// // | |
     /// // | |
-    /// // +-+
+    /// // O-+
     ///
     /// assert_eq!(rect.area(), 15);
     /// ```
@@ -247,9 +327,42 @@ impl Rect {
         self.top = pos.y;
     }
 
-    /// Centres the rect on the given position.
-    pub fn centre_on(&mut self, pos: Point) {
-        self.move_to(pos - Point::new(self.wid / 2, -self.hgt / 2));
+    /// Centres the rect on the given position. When it is not possible to centre
+	/// exactly on the provided co-ordinates, the new centre will be to the right of
+	/// and/or below the true centre.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use point::Point;
+    /// use rect::Rect;
+    ///
+    /// let mut rect = Rect::new(0, 4, 4, 4);
+	/// rect.centre_on(Point::new(4, 4));
+    ///
+    /// // The above rectangle (before centring), below:
+	/// // 'C' is where the centre would be placed.
+	/// //     C
+    /// // +--+
+    /// // |  |
+    /// // |  |
+    /// // O--+
+    /// //
+	/// // After centring:
+	/// //              
+	/// //   +--+          
+	/// //   |  |          
+	/// //   | C|        
+	/// //   +--+      
+	/// //         
+	/// //        
+	/// // O   
+	/// //
+	/// 
+    /// assert_eq!(rect.top_left(), Point::new(2, 6));
+    /// ```
+    pub fn centre_on(&mut self, centre: Point) {
+        self.move_to(centre + Point::new(-self.wid / 2, self.hgt / 2));
     }
 }
 
